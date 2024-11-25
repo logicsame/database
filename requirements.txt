@@ -1,5 +1,2 @@
 streamlit
 pandas
-sqlite3
-base64
-datetime
