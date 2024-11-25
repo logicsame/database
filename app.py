@@ -117,6 +117,7 @@ def bulk_import_data(db_name, df):
     conn.close()
 
 def main():
+ 
     st.title("🗃️ Database Operations Tool")
     
     # Sidebar for database operations
@@ -127,18 +128,25 @@ def main():
         with st.expander("Create New Database", expanded=True):
             new_db_name = st.text_input("Database Name")
             columns_input = st.text_input("Column Names (comma-separated)")
-            column_types = st.multiselect("Column Types", 
-                                        ["TEXT", "INTEGER", "REAL", "BLOB", "DATE"],
-                                        ["TEXT"])
+            
+            # Modified column type selection
+            if columns_input:
+                columns = [col.strip() for col in columns_input.split(",")]
+                column_types = []
+                
+                # Create a select box for each column
+                st.write("Select type for each column:")
+                for col in columns:
+                    col_type = st.selectbox(
+                        f"Type for {col}",
+                        options=["TEXT", "INTEGER", "REAL", "BLOB", "DATE"],
+                        key=f"type_{col}"  # Unique key for each selectbox
+                    )
+                    column_types.append(col_type)
             
             if st.button("Create Database"):
-                if new_db_name and columns_input and column_types:
+                if new_db_name and columns_input and len(columns) > 0:
                     try:
-                        columns = [col.strip() for col in columns_input.split(",")]
-                        if len(columns) != len(column_types):
-                            st.error("❌ Number of columns and types must match!")
-                            return
-                        
                         conn = init_db()
                         c = conn.cursor()
                         c.execute("INSERT INTO database_list VALUES (?, ?)",
