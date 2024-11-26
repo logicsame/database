@@ -111,6 +111,33 @@ def get_columns(db_name):
     conn.close()
     return columns, unique_columns
 
+def rename_column(db_name, old_column_name, new_column_name):
+    """Rename a column in the database"""
+    conn = sqlite3.connect(f'databases/{db_name}.db')
+    c = conn.cursor()
+    
+    try:
+        # Get current table structure
+        c.execute("PRAGMA table_info(data)")
+        columns = [row[1] for row in c.fetchall()]
+        
+        # Check if old column exists and new column doesn't
+        if old_column_name not in columns:
+            return False, "Original column does not exist"
+        if new_column_name in columns:
+            return False, "New column name already exists"
+        
+        # Rename column using ALTER TABLE
+        c.execute(f"ALTER TABLE data RENAME COLUMN {old_column_name} TO {new_column_name}")
+        conn.commit()
+        return True, "Column renamed successfully"
+    
+    except sqlite3.OperationalError as e:
+        return False, str(e)
+    finally:
+        conn.close()
+
+
 def delete_rows(db_name, condition_col, condition_val):
     """Delete rows based on condition"""
     conn = sqlite3.connect(f'databases/{db_name}.db')
@@ -240,7 +267,7 @@ def main():
             if unique_columns:
                 st.sidebar.warning(f"🚫 Unique Columns: {', '.join(unique_columns)}")
             
-            tabs = st.tabs(["📝 Manage Data", "🔄 Update Data", "🗑️ Delete Data", "📥 Import/Export"])
+            tabs = st.tabs(["📝 Manage Data", "🔄 Update Data", "🗑️ Delete Data", "📥 Import/Export", "⚙️ Column Operations"])
 
             # Data Management Tab
             with tabs[0]:
@@ -313,7 +340,10 @@ def main():
                             st.rerun()
                         else:
                             st.warning("No records were updated. Check your conditions.")
-
+            
+            
+            
+            
             # Delete Data Tab
             with tabs[2]:
                 st.subheader("Delete Records")
@@ -368,6 +398,36 @@ def main():
                         file_name=f"{selected_db}.json",
                         mime="application/json"
                     )
+                    
+                    
+            with tabs[4]:
+                st.subheader("Column Operations")
+            
+                # Rename Column Section
+                st.subheader("Rename Column")
+                col1, col2 = st.columns(2)
+            
+                with col1:
+                    old_column = st.selectbox("Select Column to Rename", 
+                                          [col for col, _, _ in columns])
+            
+                with col2:
+                    new_column_name = st.text_input("Enter New Column Name")
+            
+                if st.button("Rename Column"):
+                    if new_column_name:
+                        # Validate new name (no spaces, alphanumeric)
+                        if not new_column_name.replace('_', '').isalnum():
+                            st.error("Column name must be alphanumeric (can include underscores)")
+                        else:
+                            success, message = rename_column(selected_db, old_column, new_column_name)
+                            if success:
+                                st.success(message)
+                                st.rerun()
+                            else:
+                                st.error(message)
+                    else:
+                        st.warning("Please enter a new column name")
     else:
         st.info("👋 Welcome! Start by creating a new database using the sidebar.")
 
